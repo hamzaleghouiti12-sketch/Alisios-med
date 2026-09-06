@@ -1,0 +1,894 @@
+<title>Alisios Med</title>
+<meta name="description" content="App del paciente: registro, pedir medicación por dron, seguir el vuelo en vivo y confirmar la entrega." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
+<style>
+  :root{
+    --sand:#F6F4EF; --surface:#FFFFFF; --surface-2:#EFEBE1;
+    --ink:#18272E; --ink-soft:#4C5C64; --line:#E2DCCF;
+    --teal:#1E6E8C; --teal-deep:#134F62; --teal-tint:#E3EFF2;
+    --sun:#D2833A; --sun-tint:#F7E7D4;
+    --ok:#2E7D57; --warn:#9C6412; --crit:#B23B3B;
+    --shadow:0 1px 2px rgba(20,40,48,.06), 0 8px 24px rgba(20,40,48,.08);
+    --r:18px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --sand:#111A1E; --surface:#1A242A; --surface-2:#233139;
+      --ink:#EEF2F1; --ink-soft:#9FB2B9; --line:#2F3F47;
+      --teal:#57ADCB; --teal-deep:#2E86A3; --teal-tint:#16323B;
+      --sun:#E19B58; --sun-tint:#382A1B;
+      --ok:#5CBA8D; --warn:#D89F46; --crit:#D66C6C;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.36);
+    }
+  }
+  :root[data-theme="dark"]{
+    --sand:#111A1E; --surface:#1A242A; --surface-2:#233139;
+    --ink:#EEF2F1; --ink-soft:#9FB2B9; --line:#2F3F47;
+    --teal:#57ADCB; --teal-deep:#2E86A3; --teal-tint:#16323B;
+    --sun:#E19B58; --sun-tint:#382A1B;
+    --ok:#5CBA8D; --warn:#D89F46; --crit:#D66C6C;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.36);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  [hidden]{display:none!important}
+  body{
+    background:var(--sand);
+    color:var(--ink);
+    font-family:"Hanken Grotesk", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size:18px; line-height:1.5;
+    display:flex; justify-content:center; align-items:flex-start;
+    min-height:100vh;
+    padding:24px 16px 40px;
+  }
+  @media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms!important;transition-duration:.01ms!important} }
+
+  .phone{
+    width:100%; max-width:412px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:34px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    min-height:772px;
+    position:relative;
+  }
+  .demo-chip{
+    position:absolute; top:14px; right:14px; z-index:20;
+    font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--sun); background:var(--sun-tint);
+    padding:5px 9px; border-radius:999px;
+  }
+
+  /* ---------- auth ---------- */
+  .auth-body{padding:38px 28px 30px;display:flex;flex-direction:column;flex:1}
+  .auth-hero{text-align:center;margin-bottom:26px}
+  .mark{
+    width:44px;height:44px;border-radius:13px;flex:none;
+    background:var(--teal); color:#fff; display:grid;place-items:center;
+  }
+  .mark svg{width:26px;height:26px}
+  .mark.lg{width:64px;height:64px;border-radius:19px;margin:0 auto 16px}
+  .mark.lg svg{width:38px;height:38px}
+  .wordmark{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:30px;letter-spacing:.01em;display:block}
+  .auth-hero p{color:var(--ink-soft);font-size:16px;margin-top:6px;text-wrap:balance}
+  .auth-h{font-family:"Fraunces",Georgia,serif;font-weight:500;font-size:24px;margin-bottom:6px}
+  .auth-sub{color:var(--ink-soft);font-size:15px;margin-bottom:22px}
+  .spacer{flex:1}
+
+  .form-field{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+  .form-field > span{font-size:13.5px;font-weight:600;color:var(--ink-soft)}
+  .inp{
+    width:100%;border:1.5px solid var(--line);border-radius:12px;
+    padding:14px;font-size:16.5px;font-family:inherit;
+    background:var(--surface);color:var(--ink);
+  }
+  .inp:focus{border-color:var(--teal);outline:none}
+  .err{color:var(--crit);font-size:14px;margin:2px 0 12px;display:flex;gap:7px;align-items:flex-start}
+  .err svg{width:17px;height:17px;flex:none;margin-top:1px}
+  .hint{
+    background:var(--teal-tint);border-radius:12px;padding:12px 14px;
+    font-size:13.5px;color:var(--teal-deep);margin-bottom:18px;
+  }
+  .hint b{font-weight:700}
+  .auth-alt{text-align:center;margin-top:16px;font-size:15px;color:var(--ink-soft)}
+
+  /* shared */
+  .topbar{
+    padding:20px 20px 14px;
+    display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+  }
+  .brand{flex:1;min-width:0}
+  .brand b{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:18px;display:block;line-height:1.1}
+  .brand span{font-size:12.5px;color:var(--ink-soft)}
+  .icon-btn{
+    border:1.5px solid var(--line);background:transparent;color:var(--ink-soft);
+    border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;flex:none;
+  }
+  .icon-btn:hover{color:var(--ink);border-color:var(--ink-soft)}
+
+  .screen{padding:22px 22px 26px;flex:1;overflow-y:auto}
+  .screen h1{
+    font-family:"Fraunces",Georgia,serif; font-weight:500;
+    font-size:27px; line-height:1.2; letter-spacing:.005em;
+    text-wrap:balance; margin-bottom:6px;
+  }
+  .screen .lede{color:var(--ink-soft);font-size:16px;margin-bottom:20px}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--teal-deep);margin-bottom:10px}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .card + .card{margin-top:14px}
+  .stack{display:flex;flex-direction:column;gap:14px}
+
+  .med{display:flex;align-items:flex-start;gap:13px;padding:15px 0;border-bottom:1px solid var(--line)}
+  .med:last-child{border-bottom:0;padding-bottom:0}
+  .med:first-child{padding-top:0}
+  .med .pill-ico{width:34px;height:34px;border-radius:10px;flex:none;background:var(--teal-tint);display:grid;place-items:center;color:var(--teal-deep)}
+  .med .pill-ico svg{width:19px;height:19px}
+  .med b{font-size:17px;font-weight:600;display:block}
+  .med small{color:var(--ink-soft);font-size:14px}
+  .med .when{margin-left:auto;text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+  .when.low{color:var(--crit)}
+  .when.ok{color:var(--ok)}
+
+  label.opt{
+    display:flex;align-items:center;gap:14px;
+    border:1.5px solid var(--line);border-radius:14px;
+    padding:16px;cursor:pointer;background:var(--surface);
+    transition:border-color .15s, background .15s;
+  }
+  label.opt:has(input:checked){border-color:var(--teal);background:var(--teal-tint)}
+  label.opt:has(input:disabled){opacity:.55;cursor:not-allowed}
+  label.opt input{width:24px;height:24px;flex:none;accent-color:var(--teal)}
+  label.opt b{font-size:16.5px;font-weight:600;display:block}
+  label.opt small{color:var(--ink-soft);font-size:13.5px}
+  .opt .warn-tag{margin-left:auto;font-size:12px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.08em}
+
+  button{font-family:inherit}
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    width:100%;border:0;border-radius:14px;
+    padding:17px 18px;font-size:17.5px;font-weight:700;
+    background:var(--teal);color:#fff;cursor:pointer;
+    transition:filter .15s, transform .05s;
+  }
+  .btn:hover{filter:brightness(1.06)}
+  .btn:active{transform:translateY(1px)}
+  .btn.secondary{background:var(--surface-2);color:var(--ink)}
+  .btn.ghost{background:transparent;color:var(--teal-deep);border:1.5px solid var(--line)}
+  .btn.sun{background:var(--sun)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn svg{width:20px;height:20px}
+  .btn-row{display:flex;flex-direction:column;gap:11px;margin-top:18px}
+
+  a.link,.linkbtn{color:var(--teal-deep);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;background:none;border:0;font-size:inherit}
+
+  .live-banner{
+    display:flex;align-items:center;gap:13px;
+    background:var(--teal-deep);color:#fff;
+    border-radius:16px;padding:15px 16px;cursor:pointer;margin-bottom:20px;
+  }
+  .live-banner .dot{width:10px;height:10px;border-radius:50%;background:#fff;flex:none;animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .live-banner b{display:block;font-size:15.5px}
+  .live-banner small{opacity:.85;font-size:13px}
+  .live-banner .go{margin-left:auto;font-size:22px;line-height:1}
+
+  .map-wrap{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--teal-tint)}
+  .map-wrap svg{display:block;width:100%;height:auto}
+  .eta{text-align:center;padding:18px 0 4px}
+  .eta .num{font-family:"Fraunces",Georgia,serif;font-size:44px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+  .eta .lbl{color:var(--ink-soft);font-size:14px;margin-top:4px}
+
+  .timeline{list-style:none;margin-top:8px}
+  .timeline li{display:flex;gap:13px;padding:11px 0;font-size:15px;color:var(--ink-soft)}
+  .timeline li .tick{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;margin-top:1px}
+  .timeline li.done{color:var(--ink)}
+  .timeline li.done .tick{background:var(--ok);border-color:var(--ok);color:#fff}
+  .timeline li.done .tick svg{width:12px;height:12px}
+  .timeline li.active{color:var(--ink);font-weight:600}
+  .timeline li.active .tick{border-color:var(--teal);box-shadow:0 0 0 4px var(--teal-tint)}
+
+  .pin-box{display:flex;gap:10px;justify-content:center;margin:16px 0 4px}
+  .pin-box span{
+    width:52px;height:62px;border-radius:12px;background:var(--surface-2);
+    display:grid;place-items:center;font-size:28px;font-weight:700;
+    font-family:"Fraunces",Georgia,serif;font-variant-numeric:tabular-nums;
+  }
+
+  .photo-ph{
+    border:1px dashed var(--line);border-radius:14px;height:150px;
+    display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;
+    color:var(--ink-soft);font-size:13.5px;background:var(--surface-2);
+  }
+  .photo-ph svg{width:30px;height:30px;opacity:.6}
+
+  .success{text-align:center;padding:26px 8px}
+  .success .big{width:74px;height:74px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;margin:0 auto 16px}
+  .success .big svg{width:38px;height:38px}
+  .success h1{margin-bottom:8px}
+
+  .fam-note{background:var(--sun-tint);border-radius:14px;padding:14px 15px;font-size:14.5px;margin-bottom:18px;display:flex;gap:10px}
+  .fam-note svg{width:20px;height:20px;flex:none;color:var(--sun);margin-top:1px}
+  .toggle-row{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:4px 0}
+  .switch{position:relative;width:52px;height:30px;flex:none}
+  .switch input{opacity:0;width:100%;height:100%;cursor:pointer}
+  .switch .slot{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:background .15s}
+  .switch .knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .switch input:checked + .slot{background:var(--teal)}
+  .switch input:checked + .slot + .knob{transform:translateX(22px)}
+  .alert-feed{list-style:none;margin-top:6px}
+  .alert-feed li{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+  .alert-feed li:last-child{border-bottom:0}
+  .alert-feed time{color:var(--ink-soft);font-size:12.5px;font-variant-numeric:tabular-nums;flex:none;width:52px}
+
+  .help-btn{
+    display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    border:1.5px solid var(--line);border-radius:14px;padding:17px;background:var(--surface);
+    font-size:17px;font-weight:600;color:var(--ink);cursor:pointer;margin-bottom:12px;
+  }
+  .help-btn .ico{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--teal-tint);color:var(--teal-deep)}
+  .help-btn .ico svg{width:22px;height:22px}
+  .help-btn small{display:block;font-weight:400;color:var(--ink-soft);font-size:13.5px}
+  details{border-top:1px solid var(--line);padding:14px 0}
+  details summary{font-weight:600;cursor:pointer;font-size:15.5px;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details p{color:var(--ink-soft);font-size:14.5px;margin-top:8px}
+
+  .tabbar{display:flex;border-top:1px solid var(--line);background:var(--surface)}
+  .tabbar button{
+    flex:1;border:0;background:transparent;cursor:pointer;
+    padding:11px 4px 13px;display:flex;flex-direction:column;align-items:center;gap:4px;
+    color:var(--ink-soft);font-size:11.5px;font-weight:600;
+  }
+  .tabbar button svg{width:23px;height:23px}
+  .tabbar button.on{color:var(--teal-deep)}
+
+  .field-label{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 9px}
+  .review-line{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .review-line:last-child{border-bottom:0}
+  .review-line b{font-weight:600;text-align:right}
+  .muted{color:var(--ink-soft);font-size:13.5px}
+  :focus-visible{outline:3px solid var(--teal);outline-offset:2px;border-radius:6px}
+</style>
+
+<!-- ============ AUTH ============ -->
+<div class="phone" id="auth">
+  <span class="demo-chip">Demo</span>
+  <div class="auth-body" id="authBody"></div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="phone" id="app" hidden>
+  <span class="demo-chip">Demo</span>
+  <div class="topbar">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4l2-3 3 8 2-4h6"/><circle cx="6" cy="15" r="2"/><circle cx="18" cy="15" r="2"/></svg>
+    </div>
+    <div class="brand">
+      <b>Alisios Med</b>
+      <span id="whoLabel">Cuenta</span>
+    </div>
+    <button class="icon-btn" id="logoutBtn">Salir</button>
+  </div>
+
+  <div class="screen" id="screen" aria-live="polite"></div>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="home" class="on">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      Inicio
+    </button>
+    <button data-tab="track">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0114 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      Seguimiento
+    </button>
+    <button data-tab="family">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M4 19c0-3 2.4-5 5-5s5 2 5 5"/><path d="M15 14c2.4 0 5 1.6 5 5"/></svg>
+      <span id="tabFamLabel">Familia</span>
+    </button>
+    <button data-tab="help">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 013.9-2c1.4.9 1.2 2.6-.4 3.4-.9.5-1 .9-1 1.6"/><path d="M12 16.5h.01"/></svg>
+      Ayuda
+    </button>
+  </nav>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const SKEY = "alisios_session_v1";
+const UKEY = "alisios_users_v1";
+const KEY  = "alisios_state_v1";
+
+/* ---------- example data (demo — not real patients) ---------- */
+const CARED = { name:"Juana", town:"Betancuria", pharmacy:"Farmacia de Casillas del Ángel" };
+const TREATMENTS = [
+  { id:"enalapril", name:"Enalapril 10 mg", use:"tensión alta", daysLeft:3, cold:false },
+  { id:"metformina", name:"Metformina 850 mg", use:"azúcar", daysLeft:6, cold:false },
+  { id:"sintrom", name:"Sintrom 4 mg", use:"anticoagulante", daysLeft:2, cold:false, ctrl:true },
+  { id:"insulina", name:"Insulina Lantus", use:"azúcar", daysLeft:9, cold:true }
+];
+const WINDOWS = [
+  { id:"w1", label:"Hoy, 16:00 – 18:00", sub:"Hay dron disponible", ok:true },
+  { id:"w2", label:"Mañana, 10:00 – 12:00", sub:"Hay dron disponible", ok:true },
+  { id:"w3", label:"Mañana, 17:00 – 19:00", sub:"Viento fuerte previsto · se entregaría por carretera", ok:false }
+];
+const FLIGHT = {
+  arriveMs: 58000,
+  steps: [
+    { key:"SOLICITADO", at:0,     text:"Pedido enviado" },
+    { key:"RECIBIDO",   at:5000,  text:"Tu farmacia lo ha recibido" },
+    { key:"VALIDADO",   at:12000, text:"El farmacéutico lo ha revisado y preparado" },
+    { key:"HUB",        at:18000, text:"Paquete sellado y en el punto de salida" },
+    { key:"MISION",     at:24000, text:"Dron asignado · ventana de viento correcta" },
+    { key:"VUELO",      at:29000, text:"En vuelo hacia tu casa" },
+    { key:"ENTREGA",    at:52000, text:"Llegando a tu punto de entrega" }
+  ]
+};
+
+const I = {
+  drone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4l2-3 3 8 2-4h6"/><circle cx="6" cy="15" r="2"/><circle cx="18" cy="15" r="2"/></svg>',
+  pill:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(45 12 12)"/><path d="M8.5 8.5l7 7"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a12 12 0 006 6l2-3 5 2v4a2 2 0 01-2 2A17 17 0 013 6a2 2 0 012-2z"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>'
+};
+
+/* ================= AUTH ================= */
+function loadUsers(){
+  try{ const u = JSON.parse(localStorage.getItem(UKEY)); if(Array.isArray(u) && u.length) return u; }catch(e){}
+  return seedUsers();
+}
+function seedUsers(){
+  const u = [
+    { user:"juana", pass:"1234", role:"paciente", name:"Juana" },
+    { user:"maria", pass:"1234", role:"familiar", name:"María", caring:"Juana" }
+  ];
+  try{ localStorage.setItem(UKEY, JSON.stringify(u)); }catch(e){}
+  return u;
+}
+function saveUsers(u){ try{ localStorage.setItem(UKEY, JSON.stringify(u)); }catch(e){} }
+let session = (()=>{ try{ return JSON.parse(localStorage.getItem(SKEY)); }catch(e){ return null; } })();
+
+const authBody = $("#authBody");
+let A = { view:"welcome", role:null };
+
+function renderAuth(){
+  $("#auth").hidden = false;
+  $("#app").hidden = true;
+  ({ welcome:authWelcome, login:authLogin, register:authRegister, done:authDone }[A.view] || authWelcome)();
+}
+
+function authWelcome(){
+  authBody.innerHTML = `
+    <div class="auth-hero" style="margin-top:24px">
+      <div class="mark lg" aria-hidden="true">${I.drone}</div>
+      <b class="wordmark">Alisios Med</b>
+      <p>Tu farmacia de siempre, en la puerta de tu casa.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="btn-row">
+      <button class="btn" data-auth="register">Crear una cuenta</button>
+      <button class="btn ghost" data-auth="login">Ya tengo cuenta</button>
+    </div>
+    <p class="auth-alt" style="margin-top:22px">Servicio para Fuerteventura · demostración</p>
+  `;
+}
+
+function authLogin(){
+  authBody.innerHTML = `
+    <div class="auth-hero"><div class="mark lg" aria-hidden="true">${I.drone}</div></div>
+    <h2 class="auth-h">Entrar</h2>
+    <p class="auth-sub">Usa tu usuario y contraseña.</p>
+    <div class="hint"><b>Para la demo:</b> usuario <b>juana</b> · contraseña <b>1234</b> &nbsp;(o <b>maria</b> / <b>1234</b> para ver el modo familiar)</div>
+    <div id="authErr"></div>
+    <label class="form-field"><span>Usuario</span><input class="inp" id="lgUser" autocapitalize="none" autocomplete="username"></label>
+    <label class="form-field"><span>Contraseña</span><input class="inp" id="lgPass" type="password" autocomplete="current-password"></label>
+    <div class="btn-row">
+      <button class="btn" id="doLogin">Entrar</button>
+      <button class="btn ghost" data-auth="welcome">Volver</button>
+    </div>
+    <p class="auth-alt">¿No tienes cuenta? <button class="linkbtn" data-auth="register">Créala aquí</button></p>
+  `;
+  $("#doLogin").addEventListener("click", ()=>{
+    const u = $("#lgUser").value.trim().toLowerCase();
+    const p = $("#lgPass").value;
+    const found = loadUsers().find(x => x.user === u && x.pass === p);
+    if(!found){ authError("Usuario o contraseña incorrectos."); return; }
+    startSession(found);
+  });
+}
+
+function authRegister(){
+  authBody.innerHTML = `
+    <div class="auth-hero"><div class="mark lg" aria-hidden="true">${I.drone}</div></div>
+    <h2 class="auth-h">Crear cuenta</h2>
+    <p class="auth-sub">Un minuto y listo.</p>
+    <div id="authErr"></div>
+    <label class="form-field"><span>¿Cómo te llamas?</span><input class="inp" id="rgName" autocomplete="name"></label>
+    <label class="form-field"><span>Elige un usuario</span><input class="inp" id="rgUser" autocapitalize="none" autocomplete="username"></label>
+    <label class="form-field"><span>Contraseña (mínimo 4)</span><input class="inp" id="rgPass" type="password" autocomplete="new-password"></label>
+    <label class="form-field"><span>Repite la contraseña</span><input class="inp" id="rgPass2" type="password" autocomplete="new-password"></label>
+
+    <div class="field-label">¿Quién eres?</div>
+    <div class="stack">
+      <label class="opt"><input type="radio" name="role" value="paciente">
+        <span><b>Recibo yo la medicación</b><small>Soy la persona que toma los tratamientos</small></span></label>
+      <label class="opt"><input type="radio" name="role" value="familiar">
+        <span><b>Soy familiar o cuidador/a</b><small>Gestiono la medicación de otra persona</small></span></label>
+    </div>
+    <label class="form-field" id="caringField" hidden style="margin-top:14px">
+      <span>¿A quién cuidas? (nombre)</span><input class="inp" id="rgCaring" placeholder="Ej.: Juana, mi madre">
+    </label>
+
+    <div class="btn-row">
+      <button class="btn" id="doRegister">Crear cuenta</button>
+      <button class="btn ghost" data-auth="welcome">Volver</button>
+    </div>
+    <p class="auth-alt">¿Ya tienes cuenta? <button class="linkbtn" data-auth="login">Entra aquí</button></p>
+  `;
+  authBody.querySelectorAll('input[name="role"]').forEach(r=>{
+    r.addEventListener("change", ()=>{ $("#caringField").hidden = r.value !== "familiar"; });
+  });
+  $("#doRegister").addEventListener("click", ()=>{
+    const name = $("#rgName").value.trim();
+    const user = $("#rgUser").value.trim().toLowerCase();
+    const pass = $("#rgPass").value;
+    const pass2 = $("#rgPass2").value;
+    const role = (authBody.querySelector('input[name="role"]:checked')||{}).value;
+    if(!name){ return authError("Escribe tu nombre."); }
+    if(user.length < 3){ return authError("El usuario necesita al menos 3 letras."); }
+    if(loadUsers().some(x=>x.user===user)){ return authError("Ese usuario ya está cogido, prueba con otro."); }
+    if(pass.length < 4){ return authError("La contraseña necesita al menos 4 caracteres."); }
+    if(pass !== pass2){ return authError("Las dos contraseñas no coinciden."); }
+    if(!role){ return authError("Dinos si recibes tú la medicación o eres familiar."); }
+    const rec = { user, pass, role, name };
+    if(role === "familiar") rec.caring = $("#rgCaring").value.trim() || "Juana";
+    const all = loadUsers(); all.push(rec); saveUsers(all);
+    A.view = "done"; A.newUser = rec; renderAuth();
+  });
+}
+
+function authDone(){
+  const r = A.newUser || {};
+  authBody.innerHTML = `
+    <div class="success" style="margin-top:40px">
+      <div class="big" aria-hidden="true">${I.check}</div>
+      <h1 style="font-family:'Fraunces',serif;font-weight:500;font-size:26px">¡Cuenta creada!</h1>
+      <p class="lede">Bienvenido/a, ${esc(r.name||"")}. ${r.role==="familiar"
+        ? "Vas a gestionar la medicación de "+esc(r.caring||"tu familiar")+"."
+        : "Ya puedes pedir tu medicación cuando la necesites."}</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="btn-row"><button class="btn" id="enterApp">Entrar en la app</button></div>
+  `;
+  $("#enterApp").addEventListener("click", ()=> startSession(r));
+}
+
+function authError(msg){
+  const box = $("#authErr");
+  if(box) box.innerHTML = `<p class="err">${I.warn}<span>${esc(msg)}</span></p>`;
+}
+
+authBody.addEventListener("click", e=>{
+  const b = e.target.closest("[data-auth]");
+  if(!b) return;
+  A.view = b.dataset.auth; A.newUser = null; renderAuth();
+});
+
+function startSession(user){
+  session = { user:user.user, name:user.name, role:user.role, caring:user.caring||null };
+  try{ localStorage.setItem(SKEY, JSON.stringify(session)); }catch(e){}
+  bootApp();
+}
+function logout(){
+  try{ localStorage.removeItem(SKEY); }catch(e){}
+  session = null; clearInterval(timer);
+  A = { view:"welcome" }; renderAuth();
+}
+$("#logoutBtn").addEventListener("click", ()=>{
+  if(confirm("¿Cerrar sesión?")) logout();
+});
+
+/* ================= APP ================= */
+let S = loadState();
+function loadState(){
+  try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r) return r; }catch(e){}
+  return { tab:"home", order:null, history:[] };
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function resetDemo(){
+  ["alisios_session_v1","alisios_users_v1","alisios_state_v1"].forEach(k=>{ try{localStorage.removeItem(k)}catch(e){} });
+  location.reload();
+}
+
+function isFamily(){ return session && session.role === "familiar"; }
+function patientName(){ return isFamily() ? (session.caring || CARED.name) : session.name; }
+function famName(){ return isFamily() ? session.name : "María"; }
+
+function elapsed(){ return S.order ? Date.now() - S.order.createdAt : 0; }
+function currentStepIndex(){
+  const e = elapsed(); let idx = 0;
+  FLIGHT.steps.forEach((s,i)=>{ if(e >= s.at) idx = i; });
+  return idx;
+}
+function phase(){
+  if(!S.order) return "none";
+  if(S.order.delivered) return "delivered";
+  return elapsed() >= FLIGHT.arriveMs ? "arrived" : "enroute";
+}
+
+function bootApp(){
+  $("#auth").hidden = true;
+  $("#app").hidden = false;
+  $("#whoLabel").textContent = isFamily()
+    ? "Familiar de " + patientName()
+    : "Cuenta de " + session.name;
+  $("#tabFamLabel").textContent = isFamily() ? "Cuenta" : "Familia";
+  if(S.order && !S.order.delivered) startTicker();
+  render();
+}
+
+function render(){
+  if(S.tab === "confirm-review"){
+    document.querySelectorAll("#tabbar button").forEach(x=>x.classList.remove("on"));
+    reviewScreen(); screenEl_scroll(); return;
+  }
+  document.querySelectorAll("#tabbar button").forEach(b=>b.classList.toggle("on", b.dataset.tab===S.tab));
+  ({ home:homeScreen, track:trackScreen, family:familyScreen, help:helpScreen,
+     order:orderScreen, confirm:confirmDeliveryScreen }[S.tab] || homeScreen)();
+  screenEl_scroll();
+}
+const screenEl = $("#screen");
+function screenEl_scroll(){ screenEl.scrollTop = 0; }
+
+function greeting(){
+  const h = new Date().getHours();
+  return h < 13 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
+}
+
+function homeScreen(){
+  const ph = phase();
+  let banner = "";
+  if(ph === "enroute" || ph === "arrived"){
+    const left = Math.max(1, Math.ceil((FLIGHT.arriveMs - elapsed())/1000/60));
+    const txt = ph === "arrived" ? "El dron ha llegado · confirma la entrega" : "La medicación viene de camino";
+    const sub = ph === "arrived" ? "Toca para confirmar la recepción del paquete"
+                                 : "Llega en unos " + left + " min · toca para seguirlo";
+    banner = `<div class="live-banner" role="button" tabindex="0" data-go="track">
+        <span class="dot"></span>
+        <div><b>${txt}</b><small>${sub}</small></div>
+        <span class="go" aria-hidden="true">›</span>
+      </div>`;
+  }
+  const meds = TREATMENTS.map(t=>{
+    const cls = t.daysLeft <= 3 ? "low" : "ok";
+    const label = t.daysLeft <= 3 ? "quedan "+t.daysLeft+" días" : "para "+t.daysLeft+" días";
+    return `<div class="med">
+      <span class="pill-ico" aria-hidden="true">${I.pill}</span>
+      <div><b>${t.name}</b><small>Para ${t.use}${t.cold?" · guardar en frío":""}</small></div>
+      <span class="when ${cls}">${label}</span>
+    </div>`;
+  }).join("");
+
+  const who = isFamily() ? session.name : session.name;
+  const lede = isFamily()
+    ? "Estás gestionando la medicación de " + patientName() + "."
+    : "Tu farmacia de siempre, ahora en la puerta de tu casa.";
+  const orderLabel = isFamily() ? "Pedir la medicación de " + patientName() : "Pedir mi medicación";
+
+  screenEl.innerHTML = `
+    <h1>${greeting()}, ${esc(who)}</h1>
+    <p class="lede">${esc(lede)}</p>
+    ${banner}
+    <div class="card">
+      <div class="eyebrow">${isFamily() ? "Tratamientos de " + esc(patientName()) : "Tus tratamientos"}</div>
+      ${meds}
+    </div>
+    <div class="btn-row">
+      <button class="btn" data-go="order">${esc(orderLabel)}</button>
+      <button class="btn sun" data-go="order-urgent">Necesito algo urgente</button>
+    </div>
+    <p class="muted" style="margin-top:16px">Farmacia asociada: ${CARED.pharmacy}. El farmacéutico revisa y prepara cada pedido antes de que salga el dron.</p>
+  `;
+}
+
+let draft = { items:[], window:null, urgent:false };
+
+function orderScreen(){
+  const opts = TREATMENTS.map(t=>{
+    const pre = draft.items.includes(t.id) || (draft.items.length===0 && t.daysLeft<=6);
+    return `<label class="opt">
+      <input type="checkbox" value="${t.id}" ${pre?"checked":""}>
+      <span><b>${t.name}</b><small>Para ${t.use} · ${t.daysLeft<=3?"quedan "+t.daysLeft+" días":"tienes para "+t.daysLeft+" días"}</small></span>
+      ${t.ctrl?'<span class="warn-tag">control</span>':""}
+    </label>`;
+  }).join("");
+  const wins = WINDOWS.map(w=>`
+    <label class="opt">
+      <input type="radio" name="win" value="${w.id}" ${w.ok?"":"disabled"} ${draft.window===w.id?"checked":""}>
+      <span><b>${w.label}</b><small>${w.sub}</small></span>
+      ${w.ok?"":'<span class="warn-tag">viento</span>'}
+    </label>`).join("");
+
+  screenEl.innerHTML = `
+    <h1>${draft.urgent ? "Pedido urgente" : "Pedir medicación"}</h1>
+    <p class="lede">Marca lo que hace falta. Ya está marcado lo que está por acabarse.</p>
+    <div class="field-label">¿Qué necesita${isFamily()?"":"s"}?</div>
+    <div class="stack">${opts}</div>
+    <div class="field-label">¿Cuándo recibirlo?</div>
+    <div class="stack">${wins}</div>
+    <div class="btn-row">
+      <button class="btn" id="toReview">Continuar</button>
+      <button class="btn ghost" data-go="home">Cancelar</button>
+    </div>
+  `;
+  $("#toReview").addEventListener("click", ()=>{
+    const items = [...document.querySelectorAll('.opt input[type=checkbox]:checked')].map(i=>i.value);
+    const win = document.querySelector('.opt input[name=win]:checked');
+    if(!items.length){ alert("Marca al menos un medicamento."); return; }
+    if(!win){ alert("Elige una franja de entrega."); return; }
+    draft.items = items; draft.window = win.value;
+    S.tab = "confirm-review"; render();
+  });
+}
+
+function reviewScreen(){
+  const names = draft.items.map(id => TREATMENTS.find(t=>t.id===id).name);
+  const win = WINDOWS.find(w=>w.id===draft.window);
+  const cold = draft.items.some(id => TREATMENTS.find(t=>t.id===id).cold);
+  screenEl.innerHTML = `
+    <h1>Revisa el pedido</h1>
+    <p class="lede">Si está todo bien, lo enviamos a ${CARED.pharmacy}.</p>
+    <div class="card">
+      <div class="review-line"><span>Medicación</span><b>${names.join("<br>")}</b></div>
+      <div class="review-line"><span>Entrega</span><b>${win.label}</b></div>
+      <div class="review-line"><span>Dirección</span><b>Casa de ${esc(patientName())}<br>${CARED.town}</b></div>
+      <div class="review-line"><span>Punto de entrega</span><b>Patio trasero<br>(foto guardada)</b></div>
+      ${cold?'<div class="review-line"><span>Frío</span><b>Sí · caja con control<br>de temperatura</b></div>':""}
+      ${draft.urgent?'<div class="review-line"><span>Prioridad</span><b>Urgente</b></div>':""}
+    </div>
+    <p class="muted" style="margin-top:14px">${I.info} El pago lo cubre el plan <b>Tranquilidad</b>. No se cobra nada por esta entrega.</p>
+    <div class="btn-row">
+      <button class="btn" id="placeOrder">Enviar pedido</button>
+      <button class="btn ghost" data-go="order">Volver</button>
+    </div>
+  `;
+  $("#placeOrder").addEventListener("click", ()=>{
+    S.order = { createdAt:Date.now(), items:draft.items.slice(), window:win.label, urgent:draft.urgent, cold, delivered:false };
+    draft = { items:[], window:null, urgent:false };
+    S.tab = "track"; save(); startTicker(); render();
+  });
+}
+
+function fmtClock(sec){ const m=Math.floor(sec/60), s=sec%60; return m+":"+String(s).padStart(2,"0"); }
+
+function trackScreen(){
+  if(!S.order){
+    screenEl.innerHTML = `
+      <h1>Seguimiento</h1>
+      <p class="lede">Ahora mismo no hay ningún pedido en camino.</p>
+      <div class="btn-row"><button class="btn" data-go="order">Pedir medicación</button></div>`;
+    return;
+  }
+  const ph = phase(), e = elapsed(), stepIdx = currentStepIndex();
+  const legStart = FLIGHT.steps.find(s=>s.key==="VUELO").at;
+  let prog = (e - legStart) / (FLIGHT.arriveMs - legStart);
+  prog = Math.max(0, Math.min(1, prog));
+  if(ph !== "enroute") prog = 1;
+  const etaSec = Math.max(0, Math.ceil((FLIGHT.arriveMs - e)/1000));
+
+  const steps = FLIGHT.steps.map((s,i)=>{
+    const done = i < stepIdx || ph !== "enroute";
+    const active = i === stepIdx && ph === "enroute";
+    return `<li class="${done?"done":active?"active":""}"><span class="tick" aria-hidden="true">${done?I.check:""}</span>${s.text}</li>`;
+  }).join("");
+
+  let etaBlock;
+  if(ph === "arrived"){
+    etaBlock = `<div class="eta"><div class="num" aria-hidden="true">✓</div><div class="lbl">El dron ha llegado</div></div>
+      <div class="btn-row"><button class="btn" data-go="confirm">Confirmar la recepción</button></div>`;
+  } else if(ph === "delivered"){
+    etaBlock = `<div class="eta"><div class="num" aria-hidden="true">✓</div><div class="lbl">Entregado y confirmado</div></div>`;
+  } else {
+    etaBlock = `<div class="eta"><div class="num">${fmtClock(etaSec)}</div><div class="lbl">para llegar a casa de ${esc(patientName())}</div></div>`;
+  }
+
+  screenEl.innerHTML = `
+    <h1>Medicación en camino</h1>
+    <p class="lede">Desde ${CARED.pharmacy} hasta ${CARED.town}.</p>
+    <div class="map-wrap">${mapSVG(prog, ph)}</div>
+    ${etaBlock}
+    <ul class="timeline">${steps}</ul>
+    <p class="muted">Si el viento no acompaña, se lleva por carretera el mismo día y se avisa aquí.</p>
+  `;
+}
+
+function mapSVG(prog, ph){
+  const p = cubicPoint(46,196, 110,150, 150,70, 250,58, prog);
+  const ang = cubicAngle(46,196, 110,150, 150,70, 250,58, prog);
+  return `
+  <svg viewBox="0 0 300 232" role="img" aria-label="Mapa del recorrido del dron">
+    <rect width="300" height="232" fill="var(--teal-tint)"/>
+    <path d="M40 150 C 80 120 60 90 100 60 C 140 30 210 30 250 55 C 285 75 280 140 240 170 C 190 205 90 205 60 180 C 40 165 30 160 40 150 Z" fill="var(--surface)" opacity="0.55"/>
+    <path d="M 46 196 C 110 150, 150 70, 250 58" fill="none" stroke="var(--teal-deep)" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/>
+    <circle cx="46" cy="196" r="8" fill="var(--surface)" stroke="var(--teal-deep)" stroke-width="2.5"/>
+    <text x="46" y="221" text-anchor="middle" font-size="11" fill="var(--ink)" font-family="Hanken Grotesk, sans-serif" font-weight="600">Farmacia</text>
+    <circle cx="250" cy="58" r="8" fill="${ph==='enroute'?'var(--surface)':'var(--ok)'}" stroke="var(--ok)" stroke-width="2.5"/>
+    <text x="250" y="40" text-anchor="middle" font-size="11" fill="var(--ink)" font-family="Hanken Grotesk, sans-serif" font-weight="600">Casa</text>
+    <g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${ang.toFixed(1)})">
+      <circle r="13" fill="var(--sun)" opacity="0.18"/>
+      <path d="M-9 0h18 M-9 -4a4 4 0 010 8 M9 -4a4 4 0 000 8" stroke="var(--sun)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <circle r="3" fill="var(--sun)"/>
+    </g>
+  </svg>`;
+}
+function cubicPoint(x0,y0,x1,y1,x2,y2,x3,y3,t){
+  const u=1-t;
+  return { x:u*u*u*x0+3*u*u*t*x1+3*u*t*t*x2+t*t*t*x3, y:u*u*u*y0+3*u*u*t*y1+3*u*t*t*y2+t*t*t*y3 };
+}
+function cubicAngle(x0,y0,x1,y1,x2,y2,x3,y3,t){
+  const a=cubicPoint(x0,y0,x1,y1,x2,y2,x3,y3,Math.max(0,t-0.01));
+  const b=cubicPoint(x0,y0,x1,y1,x2,y2,x3,y3,Math.min(1,t+0.01));
+  return Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+}
+
+function confirmDeliveryScreen(){
+  if(!S.order){ S.tab="home"; render(); return; }
+  const pin = "4729";
+  screenEl.innerHTML = `
+    <h1>Confirmar la entrega</h1>
+    <p class="lede">El dron ha dejado el paquete en el patio. Comprueba que es el correcto con este código.</p>
+    <div class="eyebrow">Código de entrega</div>
+    <div class="pin-box">${pin.split("").map(d=>`<span>${d}</span>`).join("")}</div>
+    <p class="muted" style="text-align:center">Este mismo código lo ve ${esc(famName())} en su móvil.</p>
+    <div class="field-label">Foto de la entrega</div>
+    <div class="photo-ph">${I.camera}<span>Foto del paquete en el patio trasero</span></div>
+    <div class="btn-row">
+      <button class="btn" id="doConfirm">Paquete recibido</button>
+      <button class="btn ghost" data-go="track">Todavía no ha llegado</button>
+    </div>
+  `;
+  $("#doConfirm").addEventListener("click", ()=>{
+    S.order.delivered = true; S.order.deliveredAt = Date.now();
+    S.history.unshift({ when:new Date().toLocaleDateString("es-ES",{day:"numeric",month:"short"}),
+      items:S.order.items.map(id=>TREATMENTS.find(t=>t.id===id).name) });
+    save(); successScreen();
+  });
+}
+
+function successScreen(){
+  screenEl.innerHTML = `
+    <div class="success">
+      <div class="big" aria-hidden="true">${I.check}</div>
+      <h1>¡Entregado!</h1>
+      <p class="lede">La medicación ya está en casa. Se ha avisado a ${esc(famName())}.</p>
+    </div>
+    <div class="card">
+      <div class="review-line"><span>Entregado</span><b>Hoy, ${new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}</b></div>
+      <div class="review-line"><span>Recibido por</span><b>${esc(patientName())}</b></div>
+      <div class="review-line"><span>Confirmado con</span><b>Código 4729 + foto</b></div>
+    </div>
+    <div class="btn-row"><button class="btn" id="finish">Volver al inicio</button></div>
+  `;
+  $("#finish").addEventListener("click", ()=>{ S.order=null; save(); S.tab="home"; render(); });
+}
+
+function familyScreen(){
+  const feed = [];
+  if(S.order){
+    const idx = currentStepIndex();
+    FLIGHT.steps.slice(0, idx+1).forEach(s=>{
+      feed.push({ t:new Date(S.order.createdAt + s.at).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}), text:s.text });
+    });
+    if(phase()==="delivered") feed.push({ t:"ahora", text:patientName()+" ha confirmado la entrega" });
+    feed.reverse();
+  }
+  const feedHTML = feed.length
+    ? `<ul class="alert-feed">${feed.map(f=>`<li><time>${f.t}</time><span>${esc(f.text)}</span></li>`).join("")}</ul>`
+    : '<p class="muted">No hay ninguna entrega activa ahora mismo.</p>';
+
+  if(isFamily()){
+    screenEl.innerHTML = `
+      <h1>Tu cuenta</h1>
+      <p class="lede">Gestionas la medicación de ${esc(patientName())} desde tu móvil, vivas donde vivas.</p>
+      <div class="card">
+        <div class="review-line"><span>Tú</span><b>${esc(session.name)} (familiar)</b></div>
+        <div class="review-line"><span>Persona a tu cargo</span><b>${esc(patientName())}</b></div>
+        <div class="review-line"><span>Farmacia</span><b>${CARED.pharmacy}</b></div>
+        <div class="review-line"><span>Punto de entrega</span><b>Patio trasero, ${CARED.town}</b></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Avisos de esta entrega</div>
+        ${feedHTML}
+      </div>
+      <div class="btn-row"><button class="btn" data-go="order">Pedir la medicación de ${esc(patientName())}</button></div>`;
+  } else {
+    screenEl.innerHTML = `
+      <h1>Familia</h1>
+      <p class="lede">Invita a un hijo o cuidador para que pueda pedir y seguir tus entregas.</p>
+      <div class="fam-note">${I.info}
+        <div><b>${esc(famName())}</b> está vinculada a tu cuenta. Recibe un aviso en cada paso de la entrega y puede pedir por ti.</div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Avisos de esta entrega</div>
+        ${feedHTML}
+      </div>
+      <div class="btn-row"><button class="btn ghost" onclick="alert('Enviar invitación por SMS… (demo)')">Invitar a otro familiar</button></div>`;
+  }
+}
+
+function helpScreen(){
+  screenEl.innerHTML = `
+    <h1>Ayuda</h1>
+    <p class="lede">Si algo no va bien, una persona te atiende al momento.</p>
+    <button class="help-btn" onclick="alert('Llamando a Alisios Med… (demo)')">
+      <span class="ico">${I.phone}</span>
+      <span>Llamar a Alisios Med<small>Todos los días, 8:00 – 22:00</small></span>
+    </button>
+    <button class="help-btn" onclick="alert('Llamando a ${CARED.pharmacy}… (demo)')">
+      <span class="ico">${I.phone}</span>
+      <span>Llamar a mi farmacia<small>${CARED.pharmacy}</small></span>
+    </button>
+    <div style="margin-top:14px">
+      <details><summary>¿Quién trae la medicación?</summary><p>Tu farmacia de siempre prepara el pedido y un farmacéutico lo revisa. Alisios Med solo se encarga del transporte hasta casa con un dron.</p></details>
+      <details><summary>¿Y si hace mal tiempo?</summary><p>Si el viento es fuerte, no vuela el dron: se lleva la medicación por carretera el mismo día y se avisa por la app.</p></details>
+      <details><summary>¿Dónde deja el paquete el dron?</summary><p>En el punto seguro acordado al darse de alta (el patio trasero). Se recibe una foto y un código para confirmar que es el correcto.</p></details>
+      <details><summary>¿Tiene coste?</summary><p>Con el plan Tranquilidad, las entregas programadas están incluidas. Los envíos urgentes tienen un pequeño coste que se avisa antes de confirmar.</p></details>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="review-line"><span>Sesión</span><b>${esc(session.name)} · ${isFamily()?"familiar":"paciente"}</b></div>
+      <div class="review-line"><span>Usuario</span><b>${esc(session.user)}</b></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn ghost" id="logoutBtn2">Cerrar sesión</button>
+      <button class="linkbtn" id="resetBtn" style="margin-top:6px">Reiniciar la demostración por completo</button>
+    </div>
+  `;
+  $("#logoutBtn2").addEventListener("click", ()=>{ if(confirm("¿Cerrar sesión?")) logout(); });
+  $("#resetBtn").addEventListener("click", ()=>{ if(confirm("Esto borra las cuentas y el estado de la demo. ¿Seguir?")) resetDemo(); });
+}
+
+/* ---------- ticker ---------- */
+let timer = null;
+function startTicker(){
+  clearInterval(timer);
+  timer = setInterval(()=>{
+    if(!S.order || S.order.delivered){ clearInterval(timer); return; }
+    if(["track","home","family"].includes(S.tab)) render();
+  }, 1000);
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e=>{
+  const go = e.target.closest("[data-go]");
+  if(!go || $("#app").hidden) return;
+  const d = go.dataset.go;
+  if(d === "order"){ draft.urgent=false; S.tab="order"; render(); }
+  else if(d === "order-urgent"){ draft.urgent=true; draft.items=[]; S.tab="order"; render(); }
+  else if(d === "confirm"){ S.tab="confirm"; render(); }
+  else { S.tab = d; render(); }
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Enter" && e.target.classList && e.target.classList.contains("live-banner")) e.target.click();
+});
+$("#tabbar").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  S.tab = b.dataset.tab; save(); render();
+});
+
+/* ---------- boot ---------- */
+if(session && session.user){ bootApp(); }
+else { renderAuth(); }
+</script>
